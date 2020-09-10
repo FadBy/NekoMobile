@@ -1,95 +1,114 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class Tentacle : MonoBehaviour
 {
     public float speed;
+    private Vector3 defaultPosition;
+    private Vector2 touchCoor;
+    private bool touch;
+    private bool isMoving;
+    private Transform touchLimit;
+    private Transform endTrajectory;
+    private Transform cam;
+    private LineRenderer line;
 
-    private bool isCarring = false;
+    private float LeftBorder, RightBorder;
+    private float xWall;
 
-    private int direction = 1;
-    private Vector3 startPosition;
-    private Vector3 endPosition;
-    private int typeMoving = 0;
-    private Vector3 startLeft, startRight;
-    private Vector3 endLeft, endRight;
-
-    private Rigidbody2D rb;
-    private SpriteRenderer spr;
-    private Camera cam;
-    private Pooler pooler;
-    private Storage storage;
-
-    private GameObject carringItem = null;
-
-    private Transform takingZone;
-
-    void Awake()
+    private void Awake()
     {
-        rb = gameObject.GetComponent<Rigidbody2D>();
-        spr = GetComponent<SpriteRenderer>();
-        cam = Camera.main;
-        storage = Storage.Instance;
-        pooler = Pooler.Instance;
-        takingZone = transform.Find("TakingZone");
-        startLeft = cam.transform.Find("TentacleLeftStart").position;
-        startRight = cam.transform.Find("TentacleRightStart").position;
-        endLeft = cam.transform.Find("TentacleLeftEnd").position;
-        endRight = cam.transform.Find("TentacleRightEnd").position;
+        defaultPosition = transform.position;
+        cam = Camera.main.transform;
+        touchLimit = transform.Find("TouchLimit");
+        endTrajectory = cam.Find("EndTrajectory");
+        line = GetComponentInChildren<LineRenderer>();
+        LeftBorder = cam.Find("LeftBorder").position.x;
+        RightBorder = cam.Find("RightBorder").position.x;
     }
 
-    public void StartMove(float height, int direction)
+    public void Touch(Vector2 touchCoor)
     {
-        if (typeMoving != 0)
+        this.touchCoor = touchCoor;
+        if (!touch)
+            touch = true;
+    }
+
+    public void Update()
+    {
+        SetTrajectory();
+    }
+
+    public void SetTrajectory()
+    {
+        if (!touch || isMoving)
             return;
-        startPosition = new Vector3(direction > 0 ? startLeft.x : startRight.x, height);
-        endPosition = new Vector3(direction > 0 ? endLeft.x : endRight.x, height);
-        transform.position = startPosition;
-        if (direction != this.direction)
-            transform.localScale = new Vector3(-transform.localScale.x, transform.localScale.y);
-        this.direction = direction;
-        StartCoroutine(Movement());
+        RaycastHit2D hit;
+        if (touchCoor.y < touchLimit.position.y)
+        {
+            touchCoor = new Vector2(touchCoor.x, touchLimit.position.y);
+        }
+        List<Vector3> linePoses = new List<Vector3>();
+        linePoses.Add(transform.position);
+        float tan = (Mathf.Abs(touchCoor.y - transform.position.y) / Mathf.Abs(touchCoor.x - transform.position.x));
+        if (touchCoor.x > transform.position.x)
+            xWall = RightBorder;
+        else
+            xWall = LeftBorder;
+        for (int i = 0; i < 10; i++)
+        {
+            Vector3 nextPoint = new Vector3(xWall, Mathf.Abs(xWall - linePoses[linePoses.Count - 1].x) * tan + linePoses[linePoses.Count - 1].y, 0f);
+            hit = Physics2D.Raycast(linePoses[linePoses.Count - 1], nextPoint - linePoses[linePoses.Count - 1], (nextPoint - linePoses[linePoses.Count - 1]).magnitude);
+            if (hit.collider != null)
+            {
+                linePoses.Add(hit.point);
+                break;
+            }
+            linePoses.Add(nextPoint);
+            if (nextPoint.y > endTrajectory.position.y)
+                break;
+            xWall = xWall == RightBorder ? LeftBorder : RightBorder;
+            
+        }
+        line.positionCount = linePoses.Count;
+        line.SetPositions(linePoses.ToArray());
     }
 
-    private IEnumerator Movement()
+    public IEnumerator Move()
     {
-        typeMoving = 1;
-        while (direction * transform.position.x < direction * endPosition.x && !isCarring)
+        touch = false;
+        isMoving = true;
+        Vector3[] posesArr = new Vector3[line.positionCount];
+        line.GetPositions(posesArr);
+        List<Vector3> poses = new List<Vector3>(posesArr);
+        if (line.positionCount == 0)
         {
-            transform.Translate(speed * direction * Vector3.right * Time.deltaTime);
+            Debug.LogError("Траектория не задана");
+            yield break;
+        }
+        while (true)
+        {
+            if (transform.position == line.GetPosition(1))
+            {
+                poses.RemoveAt(0);;
+                line.positionCount = poses.Count;
+                line.SetPositions(poses.ToArray());
+                if (poses.Count == 1)
+                {
+                    transform.position = defaultPosition;
+                    line.positionCount = 0;
+                    break;
+                }
+            }
+            else
+            {
+                transform.position = Vector3.MoveTowards(transform.position, line.GetPosition(1), speed * Time.deltaTime);
+                line.SetPosition(0, transform.position);
+            }
             yield return null;
         }
-        typeMoving = -1;
-        while (direction * transform.position.x > direction * startPosition.x)
-        {
-            transform.Translate(speed * direction * Vector3.left * Time.deltaTime);
-            yield return null;
-        }
-        typeMoving = 0;
-        isCarring = false;
-        if (carringItem != null)
-        {
-            carringItem.transform.SetParent(null);
-            carringItem.SetActive(false);
-            carringItem = null;
-        }
-    }
-
-    private void TakeItem(GameObject item)
-    {
-        item.SetActive(false);
-        GameObject gag = storage.patternComponents[item.transform.parent.gameObject].children[item].gag;
-        carringItem = pooler.SpawnFromPull(gag, takingZone.position, transform);
-        isCarring = true;
-    }
-
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-        if (other.tag == "Enemy" || other.tag == "Friend")
-        {
-            if (!isCarring && typeMoving == 1)
-                TakeItem(other.gameObject);
-        }
+        isMoving = false;
     }
 }

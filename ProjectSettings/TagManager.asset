@@ -3,7 +3,10 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - EndField
+  - Enemy
+  - Friend
   layers:
   - Default
   - TransparentFX
@@ -38,6 +41,12 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Background
+    uniqueID: 4294503571
+    locked: 0
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Tentacle
+    uniqueID: 2120121941
     locked: 0

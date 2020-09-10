@@ -36,7 +36,7 @@ public class Pooler : Manager<Pooler>
         }
     }
 
-    public GameObject SpawnFromPull(GameObject tag, Transform parent=null)
+    public GameObject SpawnFromPull(GameObject tag, Transform parent=null, bool active=true)
     {
         if (!poolDict.ContainsKey(tag))
         {
@@ -45,8 +45,8 @@ public class Pooler : Manager<Pooler>
         }
 
         GameObject obj = poolDict[tag].Dequeue();
-
-        obj.SetActive(true);
+        if (active)
+            obj.SetActive(true);
         if (parent != null)
             obj.transform.SetParent(parent);
 
@@ -55,9 +55,9 @@ public class Pooler : Manager<Pooler>
         return obj;
     }
 
-    public GameObject SpawnFromPull(GameObject tag, Vector3 position, Transform parent=null)
+    public GameObject SpawnFromPull(GameObject tag, Vector3 position, Transform parent=null, bool active=true)
     {
-        GameObject obj = SpawnFromPull(tag, parent);
+        GameObject obj = SpawnFromPull(tag, parent, active);
         obj.transform.position = position;
         return obj;
     }
