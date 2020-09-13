@@ -1,9 +1,15 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class HeartController : MonoBehaviour
 {
     public GameObject pointPrefab;
-    public float koef;
+    public float koefJump;
+    public float koefLnJump;
+    public float shakeKoef;
+    public float shakeLimit;
+    public float jumpLimit;
     public int countPoints;
     public float distanceAfterDrop;
     public float time;
@@ -17,7 +23,7 @@ public class HeartController : MonoBehaviour
     private Vector3 lastPos;
     private float currentDistance;
     private float fixedDeltaTime;
-    private Vector2 change;
+    private Vector2 distanceJump;
 
     private float angle;
     private float force;
@@ -25,9 +31,13 @@ public class HeartController : MonoBehaviour
     private Camera cam;
     private Rigidbody2D rb;
     private Pooler pooler;
+    private SpriteRenderer spr;
+
+    private bool isTrajectory = false;
 
     private void Awake()
     {
+        spr = GetComponentInChildren<SpriteRenderer>();
         pooler = Pooler.Instance;
         cam = Camera.main;
         rb = GetComponent<Rigidbody2D>();
@@ -95,6 +105,7 @@ public class HeartController : MonoBehaviour
 
     private void ClearTrajectory()
     {
+        isTrajectory = false;
         for (int i = 0; i < points.Length; i++)
         {
             points[i].SetActive(false);
@@ -103,9 +114,24 @@ public class HeartController : MonoBehaviour
 
     private void SetTrajectory(Vector2 touchCoor)
     {
-        change = koef * (cam.ScreenToWorldPoint(touchCoor) - cam.ScreenToWorldPoint(startTouch));
+        if (!isTrajectory)
+            isTrajectory = true;
+            StartCoroutine(Shake());
+        //-koef
+        distanceJump = cam.ScreenToWorldPoint(touchCoor) - cam.ScreenToWorldPoint(startTouch);
+        float distance = distanceJump.magnitude;
+        distanceJump = distanceJump.normalized;
+        if (distance <= jumpLimit)
+        {
+            distance = -koefJump * distance;
+        }
+        else
+        {
+            distance = -(jumpLimit + koefLnJump * Mathf.Log(1 + distance - jumpLimit));
+        }
+        distanceJump *= distance;
         startTrajectory = transform.position;
-        endTrajectory = startTrajectory + change;
+        endTrajectory = startTrajectory + distanceJump;
         if (startTrajectory == endTrajectory)
             return;
         TokioTomore(time);
@@ -132,9 +158,27 @@ public class HeartController : MonoBehaviour
 
     private void CalculateParameters(Vector2 touchCoor)
     {
-        angle = Mathf.Atan(2 * change.y / change.x);
-        force = Mathf.Sqrt(2 * change.x * -Physics2D.gravity.y / Mathf.Sin(2 * angle)) * rb.mass;
+        angle = Mathf.Atan(2 * distanceJump.y / distanceJump.x);
+        force = Mathf.Sqrt(2 * distanceJump.x * -Physics2D.gravity.y / Mathf.Sin(2 * angle)) * rb.mass;
         a = Mathf.Tan(angle) / (2 * startTrajectory.x - 2 * endTrajectory.x);
         b = -2 * a * endTrajectory.x;
+    }
+
+    public IEnumerator Shake()
+    {
+        while (isTrajectory)
+        {
+            float distance = distanceJump.magnitude;
+            float value = shakeKoef * (distance - shakeLimit / 2);
+            if (distance > shakeLimit)
+            {
+                float x = Random.Range(-1f, 1f) * value;
+                float y = Random.Range(-1f, 1f) * value;
+                spr.transform.localPosition = new Vector3(x, y, transform.position.z);
+            }
+            yield return null;
+            
+        }
+        spr.transform.localPosition = Vector3.zero;
     }
 }

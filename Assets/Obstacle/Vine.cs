@@ -22,7 +22,7 @@ public class Vine : Obstacle
         line.GetPositions(points3);
         for (int i = 0; i < points2.Length; i++)
         {
-            points2[i] = points3[i] - transform.position;
+            points2[i] = points3[i];
         }
         col.points = points2;
     }

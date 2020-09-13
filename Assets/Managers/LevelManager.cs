@@ -6,28 +6,42 @@ using UnityEngine;
 public class LevelManager : Manager<LevelManager>
 {
     public int countObstacle;
-    private Transform startPoint;
     public GameObject[] prefabObstacles;
+    public GameObject startLevel;
+    private Transform startPoint;
+    private GameObject[] obstaclesObj;
     private ObstacleGroup[] obstacles;
 
     private void Awake()
     {
         startPoint = transform.Find("StartPoint");
+        obstaclesObj = new GameObject[countObstacle];
         obstacles = new ObstacleGroup[countObstacle];
         for (int i = 0; i < countObstacle; i++)
         {
-            obstacles[i] = prefabObstacles[UnityEngine.Random.Range(0, prefabObstacles.Length)].GetComponent<ObstacleGroup>();
+            if (i == 0)
+            {
+                obstaclesObj[0] = startLevel;
+                obstacles[0] = obstaclesObj[0].GetComponent<ObstacleGroup>();
+            }
+            obstaclesObj[i] = prefabObstacles[UnityEngine.Random.Range(0, prefabObstacles.Length)];
+            obstacles[i] = obstaclesObj[i].GetComponent<ObstacleGroup>();
         }
     }
 
     private void Start()
     {
-        Vector3 currentPos = startPoint.position;
+        GenerateLevel();
     }
 
-    private void GenerateLevel(int level)
+    private void GenerateLevel()
     {
-
+        Vector3 currentPos = startPoint.position;
+        for (int i = 0; i < countObstacle; i++)
+        {
+            Instantiate(obstaclesObj[i].gameObject, currentPos, Quaternion.identity);
+            currentPos += new Vector3(0f, obstacles[i].length, 0f);
+        }
     }
 
 }
