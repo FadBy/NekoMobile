@@ -37,6 +37,7 @@ public class HeartController : MonoBehaviour
 
     private void Awake()
     {
+        DontDestroyOnLoad(gameObject);
         spr = GetComponentInChildren<SpriteRenderer>();
         pooler = Pooler.Instance;
         cam = Camera.main;

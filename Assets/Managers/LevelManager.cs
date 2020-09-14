@@ -5,7 +5,6 @@ using UnityEngine;
 
 public class LevelManager : Manager<LevelManager>
 {
-    public int countObstacle;
     public GameObject[] prefabObstacles;
     public GameObject startLevel;
     private Transform startPoint;
@@ -15,27 +14,20 @@ public class LevelManager : Manager<LevelManager>
     private void Awake()
     {
         startPoint = transform.Find("StartPoint");
+    }
+
+    public void GenerateLevel(int countObstacle)
+    {
         obstaclesObj = new GameObject[countObstacle];
         obstacles = new ObstacleGroup[countObstacle];
         for (int i = 0; i < countObstacle; i++)
         {
             if (i == 0)
-            {
                 obstaclesObj[0] = startLevel;
-                obstacles[0] = obstaclesObj[0].GetComponent<ObstacleGroup>();
-            }
-            obstaclesObj[i] = prefabObstacles[UnityEngine.Random.Range(0, prefabObstacles.Length)];
+            else
+                obstaclesObj[i] = prefabObstacles[UnityEngine.Random.Range(0, prefabObstacles.Length)];
             obstacles[i] = obstaclesObj[i].GetComponent<ObstacleGroup>();
         }
-    }
-
-    private void Start()
-    {
-        GenerateLevel();
-    }
-
-    private void GenerateLevel()
-    {
         Vector3 currentPos = startPoint.position;
         for (int i = 0; i < countObstacle; i++)
         {
